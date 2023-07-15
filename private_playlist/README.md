@@ -37,7 +37,7 @@ golang으로 youtube에서 제공하는 OAuth 클라이언트 ID를 사용하여
 4. 위에 url창 확인 : https://www.youtube.com/playlist?list=PLp-ofiyo_L4kUdOxLd0Jn1-G9neeA4ZLX
 5. **PLp-ofiyo_L4kUdOxLd0Jn1-G9neeA4ZLX** 복사 후 playlistID에 넣어줌
 
-### 실행 방법
+### ▶실행 방법
 ***
 - **자세한 설명 사이트 참조** : https://healer4-13.tistory.com/15
 1. 사용자 인증을 위한 url 얻음
