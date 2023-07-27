@@ -1,1 +1,3 @@
-{"installed":{"client_id":"528943601164-qf7g9q2ndpo9l6ostuic1rm8dipr6n0l.apps.googleusercontent.com","project_id":"youtubeproject-392316","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://accounts.google.com/o/oauth2/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_secret":"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","redirect_uris":["http://localhost:8080/oauth2callback"]}}
+{
+  "installed":{"client_id":"client_id","project_id":"project_id","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://accounts.google.com/o/oauth2/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_secret":"client_secret","redirect_uris":["http://localhost:8080/oauth2callback"]}
+}
