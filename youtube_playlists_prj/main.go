@@ -59,8 +59,7 @@ func main() {
 	}
 
 	for {
-		//var yilists youtubeinfolists
-		playlists := make([]YoutubeInfo, 0)
+		var playlists youtubeinfolists
 		playlistID := "PLRHMBOXyVHiYNfq95tKlEPqxpAKw9lMb2"
 		nextPageToken := ""
 
@@ -77,10 +76,11 @@ func main() {
 
 		//yilists = playlists
 		var yilists2 youtubeinfolists
-		yilists2.ReadFile("playlists")
+		yilists2.ReadFile("playlists") //로컬에 있는 재생목록
 
 		updatelist := yilists2.CheckPlaylists(playlists)
-		fmt.Println(updatelist)
+		//fmt.Println(updatelist)
+		playlists.UpdatePlaylists(updatelist)
 		//fmt.Println(yilists.WriteFile("playlists"))
 		time.Sleep(30 * time.Minute)
 	}
@@ -97,8 +97,8 @@ func (y *youtubeinfolists) WriteFile(name string) int {
 	}
 	defer file.Close()
 
-	playlists := *y // id와 title 복사
-	for _, list := range playlists {
+	playLists := *y // id와 title 복사
+	for _, list := range playLists {
 		s := fmt.Sprintf("%s, %s\n", list.id, list.title)
 		_, err := file.Write([]byte(s))
 		if err != nil {
@@ -114,7 +114,7 @@ func (y *youtubeinfolists) WriteFile(name string) int {
 func (y *youtubeinfolists) ReadFile(name string) int {
 	var s []string
 	var num int
-	templists := YoutubeInfo{}
+	tempLists := YoutubeInfo{}
 
 	file, err := os.Open(name + ".txt")
 	if err != nil {
@@ -132,9 +132,9 @@ func (y *youtubeinfolists) ReadFile(name string) int {
 		}
 
 		s = strings.Split(line, ", ")
-		templists.id = s[0]
-		templists.title = strings.TrimRight(s[1], "\n")
-		*y = append(*y, YoutubeInfo{id: templists.id, title: templists.title})
+		tempLists.id = s[0]
+		tempLists.title = strings.TrimRight(s[1], "\n")
+		*y = append(*y, YoutubeInfo{id: tempLists.id, title: tempLists.title})
 		num = num + 1
 	}
 	return num
@@ -142,38 +142,52 @@ func (y *youtubeinfolists) ReadFile(name string) int {
 
 // CheckPlaylists : 저장된 원본 리스트(y)와 가져온 리스트(playlists)를 비교
 func (y youtubeinfolists) CheckPlaylists(playlists youtubeinfolists) UpdateInfo {
-	var updatelistZ UpdateInfo //zero을 가진 채널 목록들
-	var updatelist UpdateInfo  // 삭제 또는 추가할 채널 목록들
-	updatelistZ = ComparePlaylistsZ(y, playlists)
+	var updateListZ UpdateInfo //zero(0)을 가진 채널 목록들
+	var updateList UpdateInfo  // 삭제 또는 추가할 채널 목록들
+	updateListZ = ComparePlaylistsZ(y, playlists)
 
 	// 유튜브 재생목록에서 추가된 재생목록
-	for _, v := range updatelistZ.addlist {
+	for _, v := range updateListZ.addlist {
 		if v.id != "0" {
-			updatelist.addlist = append(updatelist.addlist, v)
+			updateList.addlist = append(updateList.addlist, v)
 		}
 	}
 	// 유튜브 재생목록에서 삭제된 재생목록
-	for _, v := range updatelistZ.deletelist {
+	for _, v := range updateListZ.deletelist {
 		if v.id != "0" {
-			updatelist.deletelist = append(updatelist.deletelist, v)
+			updateList.deletelist = append(updateList.deletelist, v)
 		}
 	}
 
-	return updatelist
+	return updateList
+}
+
+// UpdatePlaylists : 재생목록 업데이트
+func (y youtubeinfolists) UpdatePlaylists(info UpdateInfo) {
+	if info.deletelist != nil {
+		y.WriteFile("playlists")
+		fmt.Println(info.deletelist)
+		//sendemail func //삭제된 재생목록이 있을시 이메일로 알림
+	}
+
+	if info.addlist != nil {
+		y.WriteFile("playlists")
+		fmt.Println(info.addlist)
+	}
 }
 
 // BringPlaylists : 재생목록을 가져옵니다.
 func BringPlaylists(res *youtube.PlaylistItemListResponse) []YoutubeInfo {
-	playlists := make([]YoutubeInfo, 0)
+	playLists := make([]YoutubeInfo, 0)
 	//numlists := 0
 	for _, item := range res.Items {
 		songTitle := item.Snippet.Title
 		videoId := item.Snippet.ResourceId.VideoId
 		info := YoutubeInfo{title: songTitle, id: videoId}
-		playlists = append(playlists, info)
+		playLists = append(playLists, info)
 		//numlists = numlists + 1
 	}
-	return playlists
+	return playLists
 }
 
 // PlayListRes : 재생목록을 가지고 있는 응답 리스트를 반환
@@ -181,7 +195,7 @@ func PlayListRes(service *youtube.Service, part string, maxResults int64, pageTo
 	// Retrieve the playlist items from the private playlist (비공개 재생목록으로부터 재생목록 아이템들을 불러옵니다.)
 	call := service.PlaylistItems.List([]string{part}).
 		PlaylistId(playlistId). // 재생목록 ID 설정
-		MaxResults(maxResult). // 가져올 재생목록 item 최대값 설정
+		MaxResults(maxResult).  // 가져올 재생목록 item 최대값 설정
 		PageToken(pageToken)
 
 	// "youtube.playlistItems.list" 호출 실행.
@@ -192,42 +206,32 @@ func PlayListRes(service *youtube.Service, part string, maxResults int64, pageTo
 	return response
 }
 
-// UpdateFile : 재생목록 업데이트
-func UpdateFile() {
-
-}
-
-// DeleteList : 재생목록 삭제
-func DeleteList() {
-
-}
-
 // 메일 보내기
 func sendMail() {
 
 }
 
-// ComparePlaylistsZ : 두 재생 목록 비교 후 삭제, 추가 재생목록 구분 후 UpdateInfo구조체 반환
+// ComparePlaylistsZ : 두 재생 목록 비교 후 삭제, 추가할지 재생목록 구분 후 UpdateInfo구조체 반환
 func ComparePlaylistsZ(playlists1, playlists2 youtubeinfolists) UpdateInfo {
-	var updatelist UpdateInfo
-	copylists1 := make([]YoutubeInfo, len(playlists1))
-	copylists2 := make([]YoutubeInfo, len(playlists2))
+	var updateList UpdateInfo
+	copyLists1 := make([]YoutubeInfo, len(playlists1))
+	copyLists2 := make([]YoutubeInfo, len(playlists2))
 
-	copy(copylists1, playlists1)
-	copy(copylists2, playlists2)
+	copy(copyLists1, playlists1)
+	copy(copyLists2, playlists2)
 
 	//삭제 또는 추가할 재생목록들을 구분(변경되지 않는 목록들의 id를 "0"으로 변경)
 	for i1, v1 := range playlists1 {
 		for i2, v2 := range playlists2 {
 			if v1.id == v2.id {
-				copylists1[i1].id = "0"
-				copylists2[i2].id = "0"
+				copyLists1[i1].id = "0"
+				copyLists2[i2].id = "0"
 				continue
 			}
 		}
 	}
 
-	updatelist.deletelist = copylists1
-	updatelist.addlist = copylists2
-	return updatelist
+	updateList.deletelist = copyLists1
+	updateList.addlist = copyLists2
+	return updateList
 }
