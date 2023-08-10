@@ -9,6 +9,7 @@ import (
 	"google.golang.org/api/youtube/v3"
 	"io/ioutil"
 	"log"
+	"net/smtp"
 	"os"
 	"strings"
 	"time"
@@ -164,16 +165,43 @@ func (y youtubeinfolists) CheckPlaylists(playlists youtubeinfolists) UpdateInfo 
 
 // UpdatePlaylists : 재생목록 업데이트
 func (y youtubeinfolists) UpdatePlaylists(info UpdateInfo) {
+	//삭제된 재생목록 존재시 실행
 	if info.deletelist != nil {
 		y.WriteFile("playlists")
 		fmt.Println(info.deletelist)
-		//sendemail func //삭제된 재생목록이 있을시 이메일로 알림
+		info.deletelist.SendMail() // 삭제된 재생목록을 메일로 알림
 	}
 
+	//추가된 재생목록 존재시 실행
 	if info.addlist != nil {
 		y.WriteFile("playlists")
 		fmt.Println(info.addlist)
 	}
+}
+
+// SendMail : 업데이트된 재생목록을 메일로 알림
+func (y *youtubeinfolists) SendMail() {
+	var s string
+	username := "chilmanpyo@gmail.com"
+	passwd := "" // 구글 앱 비밀번호
+	auth := smtp.PlainAuth("", username, passwd, "smtp.gmail.com")
+	subject := "Subject: [제목] 유튜브 재생목록 삭제 목록 알림\r\n"
+
+	from := username
+	to := []string{"chilmanpyo@gmail.com"}
+	msg := []byte(subject) //보낼 메시지
+
+	for _, v := range *y {
+		s = fmt.Sprintf("%s, %s\n", v.id, v.title)
+		msg = append(msg, []byte(s)...) // 메시지 추가
+	}
+
+	err := smtp.SendMail("smtp.gmail.com:587", auth, from, to, msg)
+	if err != nil {
+		log.Fatalln("Error")
+		return
+	}
+	log.Fatalln("Success")
 }
 
 // BringPlaylists : 재생목록을 가져옵니다.
@@ -204,11 +232,6 @@ func PlayListRes(service *youtube.Service, part string, maxResults int64, pageTo
 		log.Fatalf("Unable to retrieve playlist items: %v", err)
 	}
 	return response
-}
-
-// 메일 보내기
-func sendMail() {
-
 }
 
 // ComparePlaylistsZ : 두 재생 목록 비교 후 삭제, 추가할지 재생목록 구분 후 UpdateInfo구조체 반환
