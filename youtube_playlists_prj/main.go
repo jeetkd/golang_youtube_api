@@ -12,7 +12,6 @@ import (
 	"net/smtp"
 	"os"
 	"strings"
-	"time"
 )
 
 const (
@@ -31,6 +30,7 @@ type UpdateInfo struct {
 type youtubeinfolists []YoutubeInfo
 
 func main() {
+
 	// 현재 경로 읽어옴
 	currentDir, err := os.Getwd()
 	if err != nil {
@@ -59,32 +59,32 @@ func main() {
 		log.Fatalf("Unable to create YouTube service: %v", err)
 	}
 
+	var playlistsOrigin youtubeinfolists //내 유튜브 계정에서 가져온 리스트
+	var playlistsLocal youtubeinfolists  //내부 플레이 리스트.txt
+
+	playlistID := "" //재생목록 ID
+	nextPageToken := ""
+
 	for {
-		var playlists youtubeinfolists
-		playlistID := "PLRHMBOXyVHiYNfq95tKlEPqxpAKw9lMb2"
-		nextPageToken := ""
+		// Retrieve the playlist items from the private playlist (비공개 재생목록으로부터 재생목록 아이템들을 불러옵니다.)
+		playlistItemsResponse := PlayListRes(service, "snippet", maxResult, nextPageToken, playlistID)
 
-		for {
-			// Retrieve the playlist items from the private playlist (비공개 재생목록으로부터 재생목록 아이템들을 불러옵니다.)
-			playlistItemsResponse := PlayListRes(service, "snippet", maxResult, nextPageToken, playlistID)
-
-			playlists = append(playlists, BringPlaylists(playlistItemsResponse)...)
-			nextPageToken = playlistItemsResponse.NextPageToken //최대 가져올수 있는 아이템들이 50이므로 다음 토큰으로 넘어와서 가져와야함.
-			if nextPageToken == "" {
-				break
-			}
+		playlistsOrigin = append(playlistsOrigin, BringPlaylists(playlistItemsResponse)...)
+		nextPageToken = playlistItemsResponse.NextPageToken //최대 가져올수 있는 아이템들이 50이므로 다음 토큰으로 넘어와서 가져와야함.
+		if nextPageToken == "" {
+			break
 		}
-
-		//yilists = playlists
-		var yilists2 youtubeinfolists
-		yilists2.ReadFile("playlists") //로컬에 있는 재생목록
-
-		updatelist := yilists2.CheckPlaylists(playlists)
-		//fmt.Println(updatelist)
-		playlists.UpdatePlaylists(updatelist)
-		//fmt.Println(yilists.WriteFile("playlists"))
-		time.Sleep(30 * time.Minute)
 	}
+
+	//로컬에 있는 재생목록들을 저장한 파일들을 읽어옴
+	playlistsLocal.ReadFile("playlistsOrigin")
+
+	//로컬에 있는 재생목록들을 기록한 파일과 유튜브에서 가져온 재생목록 파일을 비교 후 업데이트할 리스트 반환
+	updatelist := playlistsLocal.CheckPlaylists(playlistsOrigin)
+
+	//삭제 또는 추가할 리스트들을 로컬 파일에 업데이트
+	playlistsOrigin.UpdatePlaylists(updatelist)
+
 }
 
 // WriteFile : id와 제목을 playlists.txt 파일로 만듬
@@ -111,7 +111,7 @@ func (y *youtubeinfolists) WriteFile(name string) int {
 	return num
 }
 
-// ReadFile : playlists.txt 파일을 읽어와서 []YoutubeInfo에 넣어주고 반환
+// ReadFile : playlists.txt 파일을 읽어와서 *y에 넣어주고 읽어온 라인 수 반환
 func (y *youtubeinfolists) ReadFile(name string) int {
 	var s []string
 	var num int
@@ -135,25 +135,28 @@ func (y *youtubeinfolists) ReadFile(name string) int {
 		s = strings.Split(line, ", ")
 		tempLists.id = s[0]
 		tempLists.title = strings.TrimRight(s[1], "\n")
-		*y = append(*y, YoutubeInfo{id: tempLists.id, title: tempLists.title})
+		*y = append(*y, YoutubeInfo{id: tempLists.id, title: tempLists.title}) // 읽어온 데이터 추가
 		num = num + 1
 	}
+
 	return num
 }
 
-// CheckPlaylists : 저장된 원본 리스트(y)와 가져온 리스트(playlists)를 비교
+// CheckPlaylists : 저장된 원본 리스트(y)와 가져온 리스트(playlists)를 비교 후 삭제와 추가할 재생목록들을 반환
 func (y youtubeinfolists) CheckPlaylists(playlists youtubeinfolists) UpdateInfo {
 	var updateListZ UpdateInfo //zero(0)을 가진 채널 목록들
 	var updateList UpdateInfo  // 삭제 또는 추가할 채널 목록들
+
+	//변경되지 않은 목록들의 id를 "0"으로 변경 후 UpdateInfo 구조체 반환
 	updateListZ = ComparePlaylistsZ(y, playlists)
 
-	// 유튜브 재생목록에서 추가된 재생목록
+	// 유튜브 재생목록에서 추가된 재생목록 추가
 	for _, v := range updateListZ.addlist {
 		if v.id != "0" {
 			updateList.addlist = append(updateList.addlist, v)
 		}
 	}
-	// 유튜브 재생목록에서 삭제된 재생목록
+	// 유튜브 재생목록에서 삭제된 재생목록 추가
 	for _, v := range updateListZ.deletelist {
 		if v.id != "0" {
 			updateList.deletelist = append(updateList.deletelist, v)
@@ -182,13 +185,13 @@ func (y youtubeinfolists) UpdatePlaylists(info UpdateInfo) {
 // SendMail : 업데이트된 재생목록을 메일로 알림
 func (y *youtubeinfolists) SendMail() {
 	var s string
-	username := "chilmanpyo@gmail.com"
-	passwd := "" // 구글 앱 비밀번호
+	username := "" // 이메일을 보낼 구글 계정 입력
+	passwd := ""   // 구글 앱 비밀번호
 	auth := smtp.PlainAuth("", username, passwd, "smtp.gmail.com")
 	subject := "Subject: [제목] 유튜브 재생목록 삭제 목록 알림\r\n"
 
-	from := username
-	to := []string{"chilmanpyo@gmail.com"}
+	from := username       // 보내는 사람
+	to := []string{""}     //받는 사람
 	msg := []byte(subject) //보낼 메시지
 
 	for _, v := range *y {
@@ -223,7 +226,7 @@ func PlayListRes(service *youtube.Service, part string, maxResults int64, pageTo
 	// Retrieve the playlist items from the private playlist (비공개 재생목록으로부터 재생목록 아이템들을 불러옵니다.)
 	call := service.PlaylistItems.List([]string{part}).
 		PlaylistId(playlistId). // 재생목록 ID 설정
-		MaxResults(maxResult).  // 가져올 재생목록 item 최대값 설정
+		MaxResults(maxResult). // 가져올 재생목록 item 최대값 설정
 		PageToken(pageToken)
 
 	// "youtube.playlistItems.list" 호출 실행.
@@ -243,7 +246,7 @@ func ComparePlaylistsZ(playlists1, playlists2 youtubeinfolists) UpdateInfo {
 	copy(copyLists1, playlists1)
 	copy(copyLists2, playlists2)
 
-	//삭제 또는 추가할 재생목록들을 구분(변경되지 않는 목록들의 id를 "0"으로 변경)
+	//삭제 또는 추가할 재생목록들을 구분(변경되지 않은 목록들의 id를 "0"으로 변경)
 	for i1, v1 := range playlists1 {
 		for i2, v2 := range playlists2 {
 			if v1.id == v2.id {
