@@ -30,7 +30,6 @@ type UpdateInfo struct {
 type youtubeinfolists []YoutubeInfo
 
 func main() {
-
 	// 현재 경로 읽어옴
 	currentDir, err := os.Getwd()
 	if err != nil {
@@ -77,17 +76,16 @@ func main() {
 	}
 
 	//로컬에 있는 재생목록들을 저장한 파일들을 읽어옴
-	playlistsLocal.ReadFile("playlistsOrigin")
+	playlistsLocal.ReadFile("playlistsLocal")
 
 	//로컬에 있는 재생목록들을 기록한 파일과 유튜브에서 가져온 재생목록 파일을 비교 후 업데이트할 리스트 반환
 	updatelist := playlistsLocal.CheckPlaylists(playlistsOrigin)
-
 	//삭제 또는 추가할 리스트들을 로컬 파일에 업데이트
 	playlistsOrigin.UpdatePlaylists(updatelist)
 
 }
 
-// WriteFile : id와 제목을 playlists.txt 파일로 만듬
+// WriteFile : id와 제목을 playlistsLocal.txt 파일로 만듬
 func (y *youtubeinfolists) WriteFile(name string) int {
 	var num int //작성한 라인 수 반환(song numbers)
 
@@ -111,7 +109,7 @@ func (y *youtubeinfolists) WriteFile(name string) int {
 	return num
 }
 
-// ReadFile : playlists.txt 파일을 읽어와서 *y에 넣어주고 읽어온 라인 수 반환
+// ReadFile : playlistsLocal.txt 파일을 읽어와서 *y에 넣어주고 읽어온 라인 수 반환
 func (y *youtubeinfolists) ReadFile(name string) int {
 	var s []string
 	var num int
@@ -166,19 +164,19 @@ func (y youtubeinfolists) CheckPlaylists(playlists youtubeinfolists) UpdateInfo 
 	return updateList
 }
 
-// UpdatePlaylists : 재생목록 업데이트
+// UpdatePlaylists : 재생목록 업데이트 (y = 가져온 재생목록)
 func (y youtubeinfolists) UpdatePlaylists(info UpdateInfo) {
 	//삭제된 재생목록 존재시 실행
 	if info.deletelist != nil {
-		y.WriteFile("playlists")
-		fmt.Println(info.deletelist)
+		y.WriteFile("playlistsLocal")
+		fmt.Println("Delete playlists : ", info.deletelist)
 		info.deletelist.SendMail() // 삭제된 재생목록을 메일로 알림
 	}
 
 	//추가된 재생목록 존재시 실행
 	if info.addlist != nil {
-		y.WriteFile("playlists")
-		fmt.Println(info.addlist)
+		y.WriteFile("playlistsLocal")
+		fmt.Println("Add playlists : ", info.addlist)
 	}
 }
 

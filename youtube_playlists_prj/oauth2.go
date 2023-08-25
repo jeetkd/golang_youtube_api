@@ -40,7 +40,7 @@ func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 	//로그인 인증
 	GoogleLoginAuth(authURL)
 	wg.Wait()
-	//fmt.Println("code :", code)
+
 	token, err := config.Exchange(context.Background(), code)
 	if err != nil {
 		log.Fatalf("Unable to retrieve token from web: %v", err)
