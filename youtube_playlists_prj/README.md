@@ -1,4 +1,4 @@
-# golang_youtube_api
+# 프로젝트 개요
 golang으로 youtube에서 제공하는 OAuth 클라이언트 ID를 사용하여 유튜브 비공개 플레이 리스트 목록의 제목과 아디를 가져오는 코드
 
 ### ⚙개발 환경
