@@ -25,7 +25,7 @@ golang으로 youtube에서 제공하는 OAuth 클라이언트 ID를 사용하여
 ### 🗂외부 패키지 다운
 ***
 
-    go get google.golang.org/api/youtube/v3
+    go get "google.golang.org/api/youtube/v3"
     go get "golang.org/x/oauth2"
     go get "github.com/Davincible/chromedp-undetected"
     go get "github.com/chromedp/chromedp"
