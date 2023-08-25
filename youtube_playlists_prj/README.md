@@ -29,7 +29,7 @@
 - **main.go**
 1. func main() : playlistID = ""             //재생목록 ID 넣어주세요
 2. func (y *youtubeinfolists) SendMail() :
-   2.1. username := ""                       // 이메일을 보낼 구글 계정 입력
+   * username := ""                       // 이메일을 보낼 구글 계정 입력
    2.2. passwd := ""                         // 구글 앱 비밀번호
    2.3. to := []string{""}                   //받는 사람
 - **oauth2.go**
