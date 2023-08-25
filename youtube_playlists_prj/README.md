@@ -30,12 +30,12 @@
 1. func main() : playlistID = ""             //재생목록 ID 넣어주세요
 2. func (y *youtubeinfolists) SendMail() :
    * username := ""                       // 이메일을 보낼 구글 계정 입력
-   2.2. passwd := ""                         // 구글 앱 비밀번호
-   2.3. to := []string{""}                   //받는 사람
+   * passwd := ""                         // 구글 앱 비밀번호
+   * to := []string{""}                   //받는 사람
 - **oauth2.go**
 1. func GoogleLoginAuth(url string) :
-   1.1. var email = ""                       // 로그인 이메일
-   1.2. var password = ""                    // 이메일 비밀번호
+   * var email = ""                       // 로그인 이메일
+   * var password = ""                    // 이메일 비밀번호
 - **_client.json 다운로드**
   
 ### 🗂외부 패키지 다운
