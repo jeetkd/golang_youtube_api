@@ -3,12 +3,12 @@ package main
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 	"io/ioutil"
-	"log"
 	"net/smtp"
 	"os"
 	"strings"
@@ -33,20 +33,19 @@ func main() {
 	// 현재 경로 읽어옴
 	currentDir, err := os.Getwd()
 	if err != nil {
-		fmt.Println("오류:", err)
-		return
+		WriteLogFile("youtube.log", "Failed to read path: ", err)
 	}
 
 	//Read json file (json 파일 읽어옴)
-	jsonKey, err := ioutil.ReadFile(currentDir + "/youtube_playlists_prj/client.json")
+	jsonKey, err := ioutil.ReadFile(currentDir + "/client.json")
 	if err != nil {
-		log.Fatalf("Failed to read JSON file: %v", err)
+		WriteLogFile("youtube.log", "Failed to read JSON file: ", err)
 	}
 
 	// Set up the OAuth 2.0 configuration (OAuth 2.0 구성 환경 설정)
 	config, err := google.ConfigFromJSON(jsonKey, youtube.YoutubeReadonlyScope)
 	if err != nil {
-		log.Fatalf("Unable to parse client secret file: %v", err)
+		WriteLogFile("youtube.log", "Unable to parse client secret file: ", err)
 	}
 
 	// Create a new OAuth 2.0 client (새로운 OAuth 2.0 클라이언트를 생성 합니다.)
@@ -55,7 +54,7 @@ func main() {
 	// Set up the YouTube API client using the authenticated client (인증된 클라이언트를 사용하여 유튜브 API 클라이언트를 설정)
 	service, err := youtube.NewService(context.Background(), option.WithHTTPClient(client))
 	if err != nil {
-		log.Fatalf("Unable to create YouTube service: %v", err)
+		WriteLogFile("youtube.log", "Unable to create YouTube service: ", err)
 	}
 
 	var playlistsOrigin youtubeinfolists //내 유튜브 계정에서 가져온 리스트
@@ -82,17 +81,21 @@ func main() {
 	updatelist := playlistsLocal.CheckPlaylists(playlistsOrigin)
 	//삭제 또는 추가할 리스트들을 로컬 파일에 업데이트
 	playlistsOrigin.UpdatePlaylists(updatelist)
-
+	WriteLogFile("youtube.log", "Success to execute file", errors.New("파일이 성공적으로 실행 후 완료 되었습니다"))
 }
 
 // WriteFile : id와 제목을 playlistsLocal.txt 파일로 만듬
 func (y *youtubeinfolists) WriteFile(name string) int {
 	var num int //작성한 라인 수 반환(song numbers)
 
-	file, err := os.Create(name + ".txt")
+	currentDir, err := os.Getwd()
 	if err != nil {
-		fmt.Println("오류:", err)
-		return num
+		WriteLogFile("youtube.log", "Failed to read path: ", err)
+	}
+
+	file, err := os.Create(currentDir + "/" + name + ".txt")
+	if err != nil {
+		WriteLogFile("youtube.log", "Failed to Create file: ", err)
 	}
 	defer file.Close()
 
@@ -101,8 +104,7 @@ func (y *youtubeinfolists) WriteFile(name string) int {
 		s := fmt.Sprintf("%s, %s\n", list.id, list.title)
 		_, err := file.Write([]byte(s))
 		if err != nil {
-			fmt.Println("Error writing to file:", err)
-			break
+			WriteLogFile("youtube.log", "Failed to write file", err)
 		}
 		num = num + 1
 	}
@@ -115,10 +117,14 @@ func (y *youtubeinfolists) ReadFile(name string) int {
 	var num int
 	tempLists := YoutubeInfo{}
 
-	file, err := os.Open(name + ".txt")
+	currentDir, err := os.Getwd()
 	if err != nil {
-		fmt.Println("오류:", err)
-		return num
+		WriteLogFile("youtube.log", "Failed to read path: ", err)
+	}
+
+	file, err := os.Open(currentDir + "/" + name + ".txt")
+	if err != nil {
+		WriteLogFile("youtube.log", "Failed to Open file", err)
 	}
 	defer file.Close()
 
@@ -127,7 +133,7 @@ func (y *youtubeinfolists) ReadFile(name string) int {
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
-			break
+			break //완료 시 탈출
 		}
 
 		s = strings.Split(line, ", ")
@@ -136,7 +142,6 @@ func (y *youtubeinfolists) ReadFile(name string) int {
 		*y = append(*y, YoutubeInfo{id: tempLists.id, title: tempLists.title}) // 읽어온 데이터 추가
 		num = num + 1
 	}
-
 	return num
 }
 
@@ -188,9 +193,9 @@ func (y *youtubeinfolists) SendMail() {
 	auth := smtp.PlainAuth("", username, passwd, "smtp.gmail.com")
 	subject := "Subject: [제목] 유튜브 재생목록 삭제 목록 알림\r\n"
 
-	from := username       // 보내는 사람
-	to := []string{""}     //받는 사람
-	msg := []byte(subject) //보낼 메시지
+	from := username         // 보내는 사람
+	to := []string{username} //받는 사람
+	msg := []byte(subject)   //보낼 메시지
 
 	for _, v := range *y {
 		s = fmt.Sprintf("%s, %s\n", v.id, v.title)
@@ -199,10 +204,8 @@ func (y *youtubeinfolists) SendMail() {
 
 	err := smtp.SendMail("smtp.gmail.com:587", auth, from, to, msg)
 	if err != nil {
-		log.Fatalln("Error")
-		return
+		WriteLogFile("youtube.log", "Failed to Send mail", err)
 	}
-	log.Fatalln("Success")
 }
 
 // BringPlaylists : 재생목록을 가져옵니다.
@@ -225,12 +228,12 @@ func PlayListRes(service *youtube.Service, part string, maxResults int64, pageTo
 	call := service.PlaylistItems.List([]string{part}).
 		PlaylistId(playlistId). // 재생목록 ID 설정
 		MaxResults(maxResult). // 가져올 재생목록 item 최대값 설정
-		PageToken(pageToken)
+		PageToken(pageToken) // 다음 재생목록에 대한 토큰
 
 	// "youtube.playlistItems.list" 호출 실행.
 	response, err := call.Do()
 	if err != nil {
-		log.Fatalf("Unable to retrieve playlist items: %v", err)
+		WriteLogFile("youtube.log", "Unable to retrieve playlist items: ", err)
 	}
 	return response
 }
