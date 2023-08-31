@@ -5,7 +5,6 @@ import (
 	cu "github.com/Davincible/chromedp-undetected"
 	"github.com/chromedp/chromedp"
 	"golang.org/x/oauth2"
-	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -43,7 +42,8 @@ func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 
 	token, err := config.Exchange(context.Background(), code)
 	if err != nil {
-		log.Fatalf("Unable to retrieve token from web: %v", err)
+		WriteLogFile("youtube.log", "Unable to retrieve token from web: ", err)
+		//log.Fatalf("Unable to retrieve token from web: %v", err)
 	}
 	return token
 }
@@ -62,7 +62,8 @@ func GoogleLoginAuth(url string) {
 	defer cancel()
 
 	if err != nil {
-		log.Fatalf("cu.New() = Fail to create undetected Chrome executor : %v", err)
+		WriteLogFile("youtube.log", "cu.New() = Fail to create undetected Chrome executor : ", err)
+		//log.Fatalf("cu.New() = Fail to create undetected Chrome executor : %v", err)
 	}
 
 	if err := chromedp.Run(ctx,
@@ -81,7 +82,8 @@ func GoogleLoginAuth(url string) {
 		chromedp.Click(`#passwordNext > div > button > div.VfPpkd-RLmnJb`, chromedp.NodeVisible), // 다음
 		chromedp.Sleep(10*time.Second),
 	); err != nil {
-		log.Fatalf("chromedp.Run() = Fail to login in chromedp.Run() : %v", err)
+		WriteLogFile("youtube.log", "chromedp.Run() = Fail to login in chromedp.Run() : ", err)
+		//log.Fatalf("chromedp.Run() = Fail to login in chromedp.Run() : %v", err)
 		//이메일로 알림!
 	}
 }
